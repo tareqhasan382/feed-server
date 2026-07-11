@@ -4,13 +4,14 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { NodeEnvironment } from './config/env.validation';
+import { setupSwagger } from './swagger/swagger.setup';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
 
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
-  }); 
+  });
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', { infer: true });
@@ -23,9 +24,23 @@ async function bootstrap(): Promise<void> {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api/v1');
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy:
+        nodeEnv === NodeEnvironment.Production
+          ? undefined
+          : {
+              directives: {
+                defaultSrc: [`'self'`],
+                styleSrc: [`'self'`, `'unsafe-inline'`],
+                imgSrc: [`'self'`, 'data:', 'https://cdn.jsdelivr.net'],
+                scriptSrc: [`'self'`, `'unsafe-inline'`],
+              },
+            },
+    }),
+  );
 
   app.enableCors({
     origin:
@@ -48,6 +63,8 @@ async function bootstrap(): Promise<void> {
       },
     }),
   );
+
+  setupSwagger(app);
 
   app.enableShutdownHooks();
 
