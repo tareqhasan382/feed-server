@@ -116,6 +116,7 @@ model Like {
   @@unique([userId, commentId])
 
   @@index([postId])
+  @@index([postId, createdAt(sort: Desc)])
 
   @@index([commentId])
 

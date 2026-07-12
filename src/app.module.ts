@@ -8,7 +8,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppShutdownLogger } from './common/lifecycle/app-shutdown.logger';
 import { validate } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
+import { CommentsModule } from './modules/comments/comments.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { LikesModule } from './modules/likes/likes.module';
+import { PostsModule } from './modules/posts/posts.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -37,6 +40,9 @@ import { PrismaModule } from './prisma/prisma.module';
     UploadsModule,
     UsersModule,
     AuthModule,
+    PostsModule,
+    CommentsModule,
+    LikesModule,
   ],
   controllers: [AppController],
   providers: [
