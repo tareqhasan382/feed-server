@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { UploadResult } from '../uploads/interfaces/upload-result.interface';
+import { UploadsService } from '../uploads/uploads.service';
 import { SafeUser, safeUserSelect } from './types/safe-user.type';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploadsService: UploadsService,
+  ) {}
 
   async findByEmail(email: string): Promise<{
     id: string;
@@ -70,5 +75,27 @@ export class UsersService {
         refreshTokenHash: true,
       },
     });
+  }
+
+  async updateAvatar(userId: string, upload: UploadResult): Promise<SafeUser> {
+    const existing = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarPublicId: true },
+    });
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        avatar: upload.secure_url,
+        avatarPublicId: upload.public_id,
+      },
+      select: safeUserSelect,
+    });
+
+    if (existing?.avatarPublicId) {
+      await this.uploadsService.deleteImage(existing.avatarPublicId);
+    }
+
+    return updated;
   }
 }

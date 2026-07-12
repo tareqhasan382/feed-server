@@ -9,6 +9,7 @@ import { AppShutdownLogger } from './common/lifecycle/app-shutdown.logger';
 import { validate } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { UploadsModule } from './modules/uploads/uploads.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -33,6 +34,7 @@ import { PrismaModule } from './prisma/prisma.module';
       }),
     }),
     PrismaModule,
+    UploadsModule,
     UsersModule,
     AuthModule,
   ],

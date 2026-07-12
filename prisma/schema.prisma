@@ -26,7 +26,8 @@ model User {
   passwordHash      String
   refreshTokenHash  String?
 
-  avatar       String?
+  avatar           String?
+  avatarPublicId   String?
 
   posts        Post[]
   comments     Comment[]
@@ -44,7 +45,8 @@ model Post {
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   content     String   @db.Text
-  imageUrl    String?
+  imageUrl        String?
+  imagePublicId   String?
 
   visibility  Visibility @default(PUBLIC)
 
