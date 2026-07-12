@@ -12,3 +12,112 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String   @unique
+  passwordHash      String
+  refreshTokenHash  String?
+
+  avatar       String?
+
+  posts        Post[]
+  comments     Comment[]
+  likes        Like[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@map("users")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  content     String   @db.Text
+  imageUrl    String?
+
+  visibility  Visibility @default(PUBLIC)
+
+  comments    Comment[]
+  likes       Like[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt(sort: Desc)])
+  @@index([visibility])
+  @@map("posts")
+}
+
+model Comment {
+
+  id          String @id @default(cuid())
+
+  content     String @db.Text
+
+  authorId    String
+  author      User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  postId      String
+  post        Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  parentId    String?
+
+  parent      Comment? @relation("Replies", fields: [parentId], references: [id])
+
+  replies     Comment[] @relation("Replies")
+
+  likes       Like[]
+
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+
+  @@index([postId])
+
+  @@index([authorId])
+
+  @@index([parentId])
+
+  @@index([createdAt(sort: Desc)])
+  @@map("comments")
+}
+
+model Like {
+
+  id String @id @default(cuid())
+
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId String?
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  commentId String?
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+
+  @@unique([userId, commentId])
+
+  @@index([postId])
+
+  @@index([commentId])
+
+  @@index([userId])
+  @@map("likes")
+}
+
