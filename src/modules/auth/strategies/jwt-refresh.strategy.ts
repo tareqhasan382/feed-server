@@ -3,10 +3,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import {
-  INVALID_CREDENTIALS_MESSAGE,
-  JWT_REFRESH_STRATEGY,
-} from '../constants/auth.constants';
+import { JWT_REFRESH_STRATEGY } from '../constants/auth.constants';
 import { EnvironmentVariables } from '../../../config/env.validation';
 import { JwtPayload } from '../interfaces/authenticated-user.interface';
 import { UsersService } from '../../users/users.service';
@@ -38,13 +35,13 @@ export class JwtRefreshStrategy extends PassportStrategy(
     const refreshToken = request.body?.refreshToken;
 
     if (!refreshToken) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+      throw new UnauthorizedException('Unauthorized');
     }
 
     const user = await this.usersService.findByIdWithRefreshToken(payload.sub);
 
     if (!user?.refreshTokenHash) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+      throw new UnauthorizedException('Unauthorized');
     }
 
     return {

@@ -9,6 +9,7 @@ export function mapPostSummary(post: PostSummaryRecord): PostSummaryDto {
     imageUrl: post.imageUrl,
     visibility: post.visibility,
     createdAt: post.createdAt,
+    authorId: post.authorId,
     author: post.author,
     likeCount: post._count.likes,
     commentCount: post._count.comments,

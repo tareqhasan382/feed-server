@@ -5,10 +5,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
-import {
-  INVALID_CREDENTIALS_MESSAGE,
-  JWT_ACCESS_STRATEGY,
-} from '../constants/auth.constants';
+import { JWT_ACCESS_STRATEGY } from '../constants/auth.constants';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
@@ -35,12 +32,16 @@ export class JwtAuthGuard extends AuthGuard(JWT_ACCESS_STRATEGY) {
     user: TUser | false,
     info: Error | undefined,
   ): TUser {
-    if (err || !user) {
-      throw err ?? new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    if (err) {
+      throw err;
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Unauthorized');
     }
 
     if (info) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+      throw new UnauthorizedException('Unauthorized');
     }
 
     return user;

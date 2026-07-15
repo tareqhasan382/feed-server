@@ -14,6 +14,7 @@ import { UPLOAD_FOLDERS } from '../uploads/constants/upload.constants';
 import { UploadsService } from '../uploads/uploads.service';
 import type { AuthorSummary } from '../../common/types/author.type';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { PostDetailDto, PostFeedItemDto } from './dto/post-response.dto';
 import { mapPostDetail, mapPostFeedItem } from './mappers/post.mapper';
 import {
@@ -205,5 +206,90 @@ export class PostsService {
     if (visibility === Visibility.PRIVATE && authorId !== userId) {
       throw new ForbiddenException('You do not have access to this post');
     }
+  }
+
+  private assertOwnership(authorId: string, userId: string): void {
+    if (authorId !== userId) {
+      throw new ForbiddenException('You can only edit your own posts');
+    }
+  }
+
+  async updatePost(
+    userId: string,
+    postId: string,
+    updatePostDto: UpdatePostDto,
+    file?: Express.Multer.File,
+  ): Promise<PostDetailDto> {
+    const existing = await this.prisma.post.findUnique({
+      where: { id: postId },
+      select: { authorId: true, imagePublicId: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Post not found');
+    }
+
+    this.assertOwnership(existing.authorId, userId);
+
+    let newImageUrl: string | null = null;
+    let newImagePublicId: string | null = null;
+    let replaceImage = false;
+
+    if (file) {
+      if (existing.imagePublicId) {
+        await this.uploadsService
+          .deleteImage(existing.imagePublicId)
+          .catch(() => undefined);
+      }
+      const upload = await this.uploadsService.uploadImage(
+        file,
+        UPLOAD_FOLDERS.POSTS,
+      );
+      newImageUrl = upload.secure_url;
+      newImagePublicId = upload.public_id;
+      replaceImage = true;
+    }
+
+    const data: Prisma.PostUpdateInput = {};
+
+    if (updatePostDto.content !== undefined) {
+      data.content = updatePostDto.content.trim();
+    }
+    if (updatePostDto.visibility !== undefined) {
+      data.visibility = updatePostDto.visibility;
+    }
+    if (replaceImage) {
+      data.imageUrl = newImageUrl;
+      data.imagePublicId = newImagePublicId;
+    }
+
+    const post = await this.prisma.post.update({
+      where: { id: postId },
+      data,
+      select: postSummarySelect(userId),
+    });
+
+    return mapPostDetail(post);
+  }
+
+  async deletePost(userId: string, postId: string): Promise<void> {
+    const existing = await this.prisma.post.findUnique({
+      where: { id: postId },
+      select: { authorId: true, imagePublicId: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Post not found');
+    }
+
+    this.assertOwnership(existing.authorId, userId);
+
+    if (existing.imagePublicId) {
+      await this.uploadsService
+        .deleteImage(existing.imagePublicId)
+        .catch(() => undefined);
+    }
+
+    await this.prisma.post.delete({ where: { id: postId } });
   }
 }

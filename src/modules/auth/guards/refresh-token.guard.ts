@@ -5,10 +5,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import * as argon2 from 'argon2';
-import {
-  INVALID_CREDENTIALS_MESSAGE,
-  JWT_REFRESH_STRATEGY,
-} from '../constants/auth.constants';
+import { JWT_REFRESH_STRATEGY } from '../constants/auth.constants';
 import { UsersService } from '../../users/users.service';
 
 interface RefreshAuthenticatedUser {
@@ -38,7 +35,7 @@ export class RefreshTokenGuard extends AuthGuard(JWT_REFRESH_STRATEGY) {
     const user = await this.usersService.findByIdWithRefreshToken(id);
 
     if (!user?.refreshTokenHash) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+      throw new UnauthorizedException('Unauthorized');
     }
 
     const isRefreshTokenValid = await argon2.verify(
@@ -47,7 +44,7 @@ export class RefreshTokenGuard extends AuthGuard(JWT_REFRESH_STRATEGY) {
     );
 
     if (!isRefreshTokenValid) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+      throw new UnauthorizedException('Unauthorized');
     }
 
     return true;
@@ -58,12 +55,16 @@ export class RefreshTokenGuard extends AuthGuard(JWT_REFRESH_STRATEGY) {
     user: TUser | false,
     info: Error | undefined,
   ): TUser {
-    if (err || !user) {
-      throw err ?? new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    if (err) {
+      throw err;
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Unauthorized');
     }
 
     if (info) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+      throw new UnauthorizedException('Unauthorized');
     }
 
     return user;

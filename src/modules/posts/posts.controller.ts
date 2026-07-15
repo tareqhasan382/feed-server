@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UploadedFile,
@@ -28,7 +30,8 @@ import { successResponse } from '../../common/utils/api-response.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { optionalImageFilePipe } from '../uploads/pipes/optional-image-file.pipe';
-import { CreatePostBodyDto, CreatePostDto } from './dto/create-post.dto';
+import { CreatePostBodyDto } from './dto/create-post.dto';
+import { UpdatePostBodyDto } from './dto/update-post.dto';
 import {
   CreatePostApiResponseDto,
   PostDetailApiResponseDto,
@@ -58,12 +61,13 @@ export class PostsController {
   })
   async createPost(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() createPostDto: CreatePostDto,
+    @Body() createPostDto: CreatePostBodyDto,
     @UploadedFile(optionalImageFilePipe) image?: Express.Multer.File,
   ) {
+    const { image: _bodyImage, ...dto } = createPostDto;
     const post = await this.postsService.createPost(
       user.id,
-      createPostDto,
+      dto,
       image,
     );
 
@@ -107,5 +111,53 @@ export class PostsController {
     const post = await this.postsService.getPostById(user.id, postId);
 
     return successResponse(post, 'Post retrieved successfully');
+  }
+
+  @Patch(':id')
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UpdatePostBodyDto })
+  @ApiOperation({ summary: 'Update a post (content, visibility, or image)' })
+  @ApiOkResponse({
+    description: 'Post updated successfully',
+    type: PostDetailApiResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiNotFoundResponse({ description: 'Post not found' })
+  @ApiForbiddenResponse({ description: 'Not your post' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Invalid file type or file exceeds size limit',
+  })
+  async updatePost(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') postId: string,
+    @Body() updatePostDto: UpdatePostBodyDto,
+    @UploadedFile(optionalImageFilePipe) image?: Express.Multer.File,
+  ) {
+    const { image: _bodyImage, ...dto } = updatePostDto;
+    const post = await this.postsService.updatePost(
+      user.id,
+      postId,
+      dto,
+      image,
+    );
+
+    return successResponse({ post }, 'Post updated successfully');
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a post' })
+  @ApiOkResponse({ description: 'Post deleted successfully' })
+  @ApiNotFoundResponse({ description: 'Post not found' })
+  @ApiForbiddenResponse({ description: 'Not your post' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  async deletePost(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') postId: string,
+  ) {
+    await this.postsService.deletePost(user.id, postId);
+
+    return successResponse(null, 'Post deleted successfully');
   }
 }

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Visibility } from '../../../../generated/prisma/client';
-import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreatePostDto {
   @ApiProperty({
@@ -28,5 +28,6 @@ export class CreatePostBodyDto extends CreatePostDto {
     format: 'binary',
     description: 'Optional post image (jpg, jpeg, png, webp; max 5MB)',
   })
+  @IsOptional()
   image?: Express.Multer.File;
 }

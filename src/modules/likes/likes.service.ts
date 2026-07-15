@@ -1,8 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../../../generated/prisma/client';
+import {
+  DEFAULT_PAGE_LIMIT,
+  MAX_PAGE_LIMIT,
+} from '../../common/dto/cursor-pagination-query.dto';
+import { decodeCursor, encodeCursor } from '../../common/utils/cursor.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommentsService } from '../comments/comments.service';
 import { PostsService } from '../posts/posts.service';
-import { LikeToggleResponseDto } from './dto/like-response.dto';
+import {
+  CommentLikeListResponseDto,
+  LikeToggleResponseDto,
+  PostLikeListResponseDto,
+} from './dto/like-response.dto';
+import { mapLikeUser } from './mappers/like.mapper';
+import { buildLikeCursorFilter, likeUserSelect } from './types/like.types';
 
 @Injectable()
 export class LikesService {
@@ -42,13 +54,13 @@ export class LikesService {
         });
       }
 
-      const totalLikes = await tx.like.count({
+      const likeCount = await tx.like.count({
         where: { postId },
       });
 
       return {
         liked: !existingLike,
-        totalLikes,
+        likeCount,
       };
     });
   }
@@ -83,14 +95,101 @@ export class LikesService {
         });
       }
 
-      const totalLikes = await tx.like.count({
+      const likeCount = await tx.like.count({
         where: { commentId },
       });
 
       return {
         liked: !existingLike,
-        totalLikes,
+        likeCount,
       };
     });
+  }
+
+  async getPostLikes(
+    userId: string,
+    postId: string,
+    cursor?: string,
+    limit = DEFAULT_PAGE_LIMIT,
+  ): Promise<PostLikeListResponseDto> {
+    await this.postsService.findAccessiblePost(postId, userId);
+
+    const pageLimit = Math.min(Math.max(limit, 1), MAX_PAGE_LIMIT);
+    const where: Prisma.LikeWhereInput = { postId };
+
+    if (cursor) {
+      const decodedCursor = decodeCursor(cursor);
+      where.AND = [
+        buildLikeCursorFilter(decodedCursor.createdAt, decodedCursor.id),
+      ];
+    }
+
+    const likes = await this.prisma.like.findMany({
+      where,
+      take: pageLimit + 1,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: likeUserSelect,
+    });
+
+    const hasMore = likes.length > pageLimit;
+    const items = hasMore ? likes.slice(0, pageLimit) : likes;
+    const lastItem = items.at(-1);
+
+    return {
+      items: items.map(mapLikeUser),
+      nextCursor:
+        hasMore && lastItem
+          ? encodeCursor(lastItem.createdAt, lastItem.id)
+          : null,
+      limit: pageLimit,
+    };
+  }
+
+  async getCommentLikes(
+    userId: string,
+    commentId: string,
+    cursor?: string,
+    limit = DEFAULT_PAGE_LIMIT,
+  ): Promise<CommentLikeListResponseDto> {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { id: true, postId: true },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    await this.postsService.findAccessiblePost(comment.postId, userId);
+
+    const pageLimit = Math.min(Math.max(limit, 1), MAX_PAGE_LIMIT);
+    const where: Prisma.LikeWhereInput = { commentId };
+
+    if (cursor) {
+      const decodedCursor = decodeCursor(cursor);
+      where.AND = [
+        buildLikeCursorFilter(decodedCursor.createdAt, decodedCursor.id),
+      ];
+    }
+
+    const likes = await this.prisma.like.findMany({
+      where,
+      take: pageLimit + 1,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: likeUserSelect,
+    });
+
+    const hasMore = likes.length > pageLimit;
+    const items = hasMore ? likes.slice(0, pageLimit) : likes;
+    const lastItem = items.at(-1);
+
+    return {
+      items: items.map(mapLikeUser),
+      nextCursor:
+        hasMore && lastItem
+          ? encodeCursor(lastItem.createdAt, lastItem.id)
+          : null,
+      limit: pageLimit,
+    };
   }
 }

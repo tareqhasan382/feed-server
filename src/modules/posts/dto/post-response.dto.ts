@@ -21,6 +21,9 @@ export class PostSummaryDto {
   @ApiProperty({ example: '2026-07-12T10:00:00.000Z' })
   createdAt: Date;
 
+  @ApiProperty({ example: 'clxyz123abc456def789' })
+  authorId: string;
+
   @ApiProperty({ type: AuthorSummaryDto })
   author: AuthorSummaryDto;
 

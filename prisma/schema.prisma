@@ -120,6 +120,8 @@ model Like {
 
   @@index([commentId])
 
+  @@index([commentId, createdAt(sort: Desc)])
+
   @@index([userId])
   @@map("likes")
 }
